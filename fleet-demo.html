@@ -1,0 +1,555 @@
+<!doctype html>
+<!--
+  Copyright (c) 2026 Marwan Shehata. All rights reserved.
+  DEMO VERSION - all data shown is fictional sample data.
+  This code may not be copied, modified, or distributed without written permission.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fleet Location Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: yard-office register. Category strip on top, equipment list left, the selected unit's location history right (full-screen sheet on phones). Fleet numbers are rendered as yellow equipment plates. */
+:root{
+  --bg:#ECEFF2; --surface:#FFFFFF; --surface-2:#F4F6F8; --ink:#15202B; --muted:#5A6774; --line:#D4DAE1;
+  --plate:#F2B705; --plate-ink:#141414; --plate-edge:#C99500;
+  --btn:#15202B; --btn-ink:#FFFFFF; --focus:#2F6FA3;
+  --ok:#1F7A4D; --ok-bg:#E3F3EA; --warn:#8A5A00; --warn-bg:#FFF1CC; --danger:#B42318; --danger-bg:#FDECEA;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1419; --surface:#172029; --surface-2:#1D2731; --ink:#E5EAEF; --muted:#94A1AE; --line:#2A3643;
+  --plate:#E8B00A; --plate-ink:#121212; --plate-edge:#A67F00;
+  --btn:#E8B00A; --btn-ink:#121212; --focus:#6AAEE3;
+  --ok:#5CCB93; --ok-bg:#15372A; --warn:#F2C45A; --warn-bg:#3A2E0E; --danger:#FF8A80; --danger-bg:#3D1916;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1419; --surface:#172029; --surface-2:#1D2731; --ink:#E5EAEF; --muted:#94A1AE; --line:#2A3643;
+  --plate:#E8B00A; --plate-ink:#121212; --plate-edge:#A67F00;
+  --btn:#E8B00A; --btn-ink:#121212; --focus:#6AAEE3;
+  --ok:#5CCB93; --ok-bg:#15372A; --warn:#F2C45A; --warn-bg:#3A2E0E; --danger:#FF8A80; --danger-bg:#3D1916;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.app{max-width:1320px;margin:0 auto;padding-inline:16px;padding-block:18px 40px;display:flex;flex-direction:column;gap:14px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:44px;height:44px;border-radius:8px;background:var(--plate);color:var(--plate-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:18px;letter-spacing:.04em;box-shadow:inset 0 -3px 0 var(--plate-edge)}
+h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:28px;line-height:1;letter-spacing:.01em;text-transform:uppercase}
+.sub{margin:3px 0 0;color:var(--muted);font-size:13px}
+.top-actions{display:flex;gap:8px;position:relative}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.small{padding:6px 10px;font-size:13px}
+.btn.link{border:0;background:none;padding:4px 6px;color:var(--muted);font-weight:500}
+.btn.link:hover{color:var(--ink)}
+.btn[disabled]{opacity:.55;cursor:default}
+
+.menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;z-index:30;min-width:250px;display:flex;flex-direction:column}
+.menu button{text-align:left;border:0;background:none;padding:9px 10px;border-radius:6px;cursor:pointer}
+.menu button:hover{background:var(--surface-2)}
+.menu small{display:block;color:var(--muted)}
+
+/* category strip */
+.cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.cat{flex:0 0 auto;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px 7px 14px;cursor:pointer;font-weight:600}
+.cat .n{font-family:var(--f-mono);font-size:12px;background:var(--surface-2);border-radius:999px;padding:1px 7px;color:var(--muted)}
+.cat[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.cat[aria-selected="true"] .n{background:var(--plate);color:var(--plate-ink)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.search{flex:1 1 260px;min-width:0}
+.search input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 12px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 12px;cursor:pointer;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--plate)}
+.sortsel{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px}
+
+/* main */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:14px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+
+.lhead,.row{display:grid;grid-template-columns:92px minmax(0,1.3fr) minmax(0,1.2fr) 140px 18px;gap:14px;align-items:center;padding:10px 14px}
+.lhead{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);font-weight:600}
+.row{width:100%;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--surface-2)}
+.row[aria-current="true"]{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--plate)}
+.plate{display:inline-flex;align-items:center;justify-content:center;min-width:64px;padding:4px 8px;border-radius:5px;background:var(--plate);color:var(--plate-ink);font-family:var(--f-mono);font-weight:700;font-size:15px;letter-spacing:.03em;border:1.5px solid var(--plate-ink);box-shadow:inset 0 -2px 0 var(--plate-edge);font-variant-numeric:tabular-nums}
+.plate.big{font-size:22px;padding:6px 12px;min-width:88px}
+.unit b{display:block;font-weight:700;font-size:15px}
+.unit small,.meta{color:var(--muted);font-size:12.5px}
+.mono{font-family:var(--f-mono);font-size:12.5px}
+.site{display:flex;flex-direction:column;gap:3px;min-width:0}
+.site .loc{font-weight:600;overflow-wrap:anywhere}
+.code{display:inline-block;align-self:flex-start;font-family:var(--f-mono);font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--surface-2);border-radius:4px;padding:1px 6px;letter-spacing:.04em}
+.since{display:flex;flex-direction:column;gap:3px;font-variant-numeric:tabular-nums}
+.since small{color:var(--muted)}
+.chev{color:var(--muted);font-size:18px}
+.chip{display:inline-block;align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
+.chip.moved{background:var(--warn-bg);color:var(--warn)}
+.chip.current{background:var(--ok-bg);color:var(--ok)}
+
+.empty{padding:42px 20px;text-align:center;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty h3{margin:0;color:var(--ink);font-family:var(--f-display);font-size:22px;text-transform:uppercase;letter-spacing:.02em}
+.empty p{margin:0;max-width:42ch}
+
+/* sites view */
+.sites{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:12px}
+.sitecard{border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface-2);min-width:0}
+.sitecard header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sitecard h4{margin:0;font-size:15px;overflow-wrap:anywhere}
+.sitecard .count{font-family:var(--f-display);font-size:26px;line-height:1;font-weight:700}
+.sitecard .units{display:flex;flex-direction:column;gap:6px}
+.sitecard .units button{display:flex;align-items:center;gap:10px;border:0;background:var(--surface);border-radius:6px;padding:6px 8px;cursor:pointer;text-align:left;min-width:0}
+.sitecard .units button:hover{outline:1px solid var(--line)}
+.sitecard .plate{min-width:52px;font-size:13px;padding:2px 6px}
+
+/* detail */
+.detail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow:auto}
+.dwrap{padding:16px;display:flex;flex-direction:column;gap:16px}
+.dtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.dtitle{display:flex;gap:12px;align-items:center;min-width:0}
+.dtitle h2{margin:0;font-family:var(--f-display);font-size:26px;line-height:1;text-transform:uppercase;letter-spacing:.01em;overflow-wrap:anywhere}
+.dclose{display:none}
+.specs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.specs div{background:var(--surface);padding:8px 10px;min-width:0}
+.specs dt{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.specs dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
+.now{border:1.5px solid var(--ink);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--surface-2)}
+.now .lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.now .where{font-family:var(--f-display);font-size:28px;line-height:1.05;font-weight:700;text-transform:uppercase;overflow-wrap:anywhere}
+.now .row2{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
+.sect h3{margin:0 0 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.form .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:12px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 10px}
+.field textarea{resize:vertical;min-height:38px}
+.err{color:var(--danger);font-size:13px;font-weight:600;margin:0}
+.formfoot{display:flex;justify-content:flex-end;gap:8px;align-items:center;flex-wrap:wrap}
+
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;position:relative;padding-bottom:16px}
+.tl:last-child{padding-bottom:0}
+.tl::before{content:"";position:absolute;left:10px;top:18px;bottom:0;width:2px;background:var(--line)}
+.tl:last-child::before{display:none}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);background:var(--surface);margin:3px 0 0 4px}
+.tl.cur .dot{background:var(--plate);border-color:var(--plate-ink)}
+.tl .date{font-family:var(--f-mono);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.tl .place{font-weight:600;overflow-wrap:anywhere}
+.tl .note{color:var(--muted);font-size:13px;margin-top:2px;overflow-wrap:anywhere}
+.tl .dur{color:var(--muted);font-size:12.5px}
+.confirm{border:1px solid var(--danger);background:var(--danger-bg);border-radius:8px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.confirm p{margin:0;color:var(--danger);font-weight:600}
+.placeholder{padding:48px 22px;text-align:center;color:var(--muted)}
+.placeholder .plate{margin-bottom:12px;opacity:.6}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(10,15,20,.55);z-index:50;display:grid;place-items:center;padding:16px}
+.sheet{background:var(--surface);border-radius:14px;width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px;border:1px solid var(--line)}
+.sheet h2{margin:0;font-family:var(--f-display);text-transform:uppercase;font-size:24px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
+
+@media (max-width:1040px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .detail{position:fixed;inset:0;z-index:40;max-height:none;border-radius:0;border:0;transform:translateX(100%);transition:transform .22s ease;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .detail.open{transform:none}
+  .dclose{display:inline-flex}
+}
+@media (max-width:720px){
+  .lhead{display:none}
+  .row{grid-template-columns:auto minmax(0,1fr) 16px;grid-template-areas:"plate unit chev" "site site since";row-gap:8px}
+  .row .plate{grid-area:plate}.row .unit{grid-area:unit}.row .site{grid-area:site}.row .since{grid-area:since;text-align:right;align-items:flex-end}.row .chev{grid-area:chev}
+  .specs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .form{grid-template-columns:minmax(0,1fr)}
+  h1{font-size:23px}
+}
+@media (prefers-reduced-motion:reduce){.detail{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">FLR</div>
+      <div>
+        <h1>Fleet Location Register</h1>
+        <p class="sub" id="summary">Loading the register…</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="exportBtn" hidden aria-haspopup="true" aria-expanded="false">Export</button>
+      <div class="menu" id="exportMenu" hidden>
+        <button id="expCurrent">Current locations (CSV)<small>One row per unit, where it is now</small></button>
+        <button id="expHistory">Movement history (CSV)<small>Every arrival and shift, by unit</small></button>
+      </div>
+      <button class="btn primary" id="addBtn">+ Add equipment</button>
+    </div>
+  </header>
+
+  <nav class="cats" id="cats" role="tablist" aria-label="Equipment categories"></nav>
+
+  <div class="toolbar">
+    <div class="search"><input id="q" type="search" placeholder="Search fleet no., serial, model, site or site code" aria-label="Search"></div>
+    <div class="seg" role="group" aria-label="View">
+      <button id="vList" aria-pressed="true">Equipment</button>
+      <button id="vSites" aria-pressed="false">By site</button>
+    </div>
+    <select class="sortsel" id="sort" aria-label="Sort">
+      <option value="fleet">Sort: Fleet no.</option>
+      <option value="recent">Sort: Latest move</option>
+      <option value="site">Sort: Site code</option>
+    </select>
+  </div>
+
+  <main class="main">
+    <section class="panel" id="listpane"></section>
+    <aside class="panel detail" id="detail"></aside>
+  </main>
+</div>
+
+<div class="overlay" id="modal" hidden><div class="sheet" role="dialog" aria-modal="true" id="modalBody"></div></div>
+<div class="toast" id="toast" hidden></div>
+<datalist id="dlCodes"></datalist>
+<datalist id="dlNames"></datalist>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ============ PASTE YOUR *DEMO* FIREBASE CONFIG HERE ============
+   Firebase console > Project settings > General > Your apps > Web app > SDK setup (Config) */
+const firebaseConfig = {
+  // DEMO: paste the config of a SEPARATE demo Firebase project here (never the real one)
+  apiKey: "PASTE_DEMO_API_KEY",
+  authDomain: "PASTE_DEMO_PROJECT.firebaseapp.com",
+  projectId: "PASTE_DEMO_PROJECT",
+  storageBucket: "PASTE_DEMO_PROJECT.firebasestorage.app",
+  messagingSenderId: "PASTE_DEMO_SENDER_ID",
+  appId: "PASTE_DEMO_APP_ID"
+};
+const COL = "fleet_equipment"; // Firestore collection name
+/* ========================================================== */
+const CATS=[
+  {key:'rigs',label:'Rigs',one:'Rig'},
+  {key:'cranes',label:'Cranes',one:'Crane'},
+  {key:'vibros',label:'Vibros',one:'Vibro'},
+  {key:'generators',label:'Generators',one:'Generator'},
+  {key:'panels',label:'Distribution panels',one:'Distribution panel'},
+  {key:'general',label:'General equipment',one:'General equipment'}
+];
+const catOf=k=>CATS.find(c=>c.key===k)||{key:k,label:k||'Uncategorised',one:k||'Unit'};
+const S={items:[],cat:'all',q:'',view:'list',sort:'fleet',sel:null,confirm:null,canWrite:true,status:'loading',db:null,dl:null,busy:false,moveErr:''};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function todayISO(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)}
+function fmt(iso){if(!iso)return '—';const[y,m,d]=iso.split('-').map(Number);return `${String(d).padStart(2,'0')} ${MON[m-1]} ${y}`}
+function dnum(iso){const[y,m,d]=iso.split('-').map(Number);return Date.UTC(y,m-1,d)/864e5}
+function days(a,b){return Math.round(dnum(b)-dnum(a))}
+function plural(n,w){return `${n} ${w}${n===1?'':'s'}`}
+function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4)}
+const cmp=(a,b)=>String(a??'').localeCompare(String(b??''),undefined,{numeric:true,sensitivity:'base'});
+
+function hist(i){return [...(i.history||[])].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.t||0)-(b.t||0))}
+function cur(i){const h=hist(i);return h[h.length-1]||null}
+
+function knownSites(){
+  const m=new Map();
+  for(const i of S.items)for(const h of hist(i)){if(h.siteCode)m.set(h.siteCode.toUpperCase(),h.location)}
+  return m;
+}
+function refreshDatalists(){
+  const m=knownSites();
+  $('dlCodes').innerHTML=[...m].map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join('');
+  $('dlNames').innerHTML=[...new Set(m.values())].map(n=>`<option value="${esc(n)}"></option>`).join('');
+}
+
+function visible(){
+  const q=S.q.trim().toLowerCase();
+  let list=S.items.filter(i=>S.cat==='all'||i.category===S.cat);
+  if(q)list=list.filter(i=>{const c=cur(i)||{};return [i.model,i.serial,i.fleetNo,catOf(i.category).label,c.location,c.siteCode].join(' ').toLowerCase().includes(q)});
+  const ci=k=>CATS.findIndex(c=>c.key===k);
+  list.sort((a,b)=>{
+    if(S.sort==='recent'){const x=(cur(b)||{}).date||'',y=(cur(a)||{}).date||'';if(x!==y)return x<y?-1:1}
+    if(S.sort==='site'){const r=cmp((cur(a)||{}).siteCode,(cur(b)||{}).siteCode);if(r)return r}
+    if(S.cat==='all'){const r=ci(a.category)-ci(b.category);if(r)return r}
+    return cmp(a.fleetNo,b.fleetNo);
+  });
+  return list;
+}
+
+/* ---------- render ---------- */
+function renderAll(){renderHeader();renderCats();renderList();renderDetail();refreshDatalists()}
+
+function renderHeader(){
+  const n=S.items.length, sites=new Set(S.items.map(i=>(cur(i)||{}).siteCode).filter(Boolean)).size;
+  $('summary').textContent=S.status==='loading'?'Loading the register…':S.status==='offline'?(S.status==='error'?'Connection error':'Firebase not set up'):`${plural(n,'unit')} across ${plural(sites,'site')} · as of ${fmt(todayISO())}`;
+  $('addBtn').hidden=!S.canWrite||S.status!=='ready';
+  $('exportBtn').hidden=!S.dl||!S.items.length;
+  $('vList').setAttribute('aria-pressed',S.view==='list');
+  $('vSites').setAttribute('aria-pressed',S.view==='sites');
+}
+
+function renderCats(){
+  const count=k=>k==='all'?S.items.length:S.items.filter(i=>i.category===k).length;
+  $('cats').innerHTML=[{key:'all',label:'All equipment'},...CATS].map(c=>
+    `<button class="cat" role="tab" data-cat="${c.key}" aria-selected="${S.cat===c.key}">${esc(c.label)}<span class="n">${count(c.key)}</span></button>`).join('');
+}
+
+function renderList(){
+  const el=$('listpane'), today=todayISO();
+  if(S.status==='loading'){el.innerHTML=`<div class="empty"><h3>Loading</h3><p>Fetching equipment and site history…</p></div>`;return}
+  if(S.status==='offline'||S.status==='error'){el.innerHTML=S.status==='offline'?`<div class="empty"><h3>Firebase not set up</h3><p>Paste your Firebase project's config into <code>firebaseConfig</code> at the top of the script, then redeploy.</p></div>`:`<div class="empty"><h3>Can't reach Firestore</h3><p>Error: ${esc(S.errMsg||'unknown')}. Check that Firestore is created and its security rules allow reading and writing <code>${esc(COL)}</code>.</p></div>`;return}
+  const list=visible();
+  if(!list.length){
+    const c=S.cat==='all'?null:catOf(S.cat);
+    el.innerHTML=S.q?`<div class="empty"><h3>No match</h3><p>Nothing ${c?'in '+esc(c.label.toLowerCase())+' ':''}matches “${esc(S.q)}”. Try a fleet number, serial or site code.</p></div>`
+      :`<div class="empty"><span class="plate">000</span><h3>No ${c?esc(c.label.toLowerCase()):'equipment'} yet</h3><p>Add a unit with its model, serial and fleet number, plus the site it arrived at. Every later shift is logged in its history.</p>${S.canWrite?`<button class="btn primary" data-act="add">+ Add ${c?esc(c.one.toLowerCase()):'equipment'}</button>`:''}</div>`;
+    return;
+  }
+  if(S.view==='sites'){
+    const groups=new Map();
+    for(const i of list){const c=cur(i)||{};const k=(c.siteCode||'—').toUpperCase();if(!groups.has(k))groups.set(k,{code:k,name:c.location||'',units:[]});groups.get(k).units.push(i)}
+    const arr=[...groups.values()].sort((a,b)=>b.units.length-a.units.length||cmp(a.code,b.code));
+    el.innerHTML=`<div class="sites">${arr.map(g=>`<article class="sitecard"><header><div><h4>${esc(g.name)}</h4><span class="code">${esc(g.code)}</span></div><div class="count" aria-label="${g.units.length} units">${g.units.length}</div></header>
+      <div class="units">${g.units.map(i=>`<button data-id="${i.id}"><span class="plate">${esc(i.fleetNo)}</span><span class="unit" style="min-width:0"><b style="font-size:14px">${esc(i.model)}</b><small>${esc(catOf(i.category).one)} · since ${fmt((cur(i)||{}).date)}</small></span></button>`).join('')}</div></article>`).join('')}</div>`;
+    return;
+  }
+  el.innerHTML=`<div class="lhead"><span>Fleet no.</span><span>Equipment</span><span>Current site</span><span>On site since</span><span></span></div>`+
+    list.map(i=>{const c=cur(i)||{};const d=c.date?days(c.date,today):0;const moves=(i.history||[]).length;
+      return `<button class="row" data-id="${i.id}" aria-current="${S.sel===i.id}">
+        <span class="plate">${esc(i.fleetNo)}</span>
+        <span class="unit"><b>${esc(i.model)}</b><small>SN <span class="mono">${esc(i.serial)}</span> · ${esc(catOf(i.category).one)}</small></span>
+        <span class="site"><span class="loc">${esc(c.location)}</span><span class="code">${esc(c.siteCode)}</span></span>
+        <span class="since"><span>${fmt(c.date)}</span><small>${d>=0?plural(d,'day')+' on site':'arrives in '+plural(-d,'day')}</small>${moves>1&&d>=0&&d<=7?'<span class="chip moved">Recently moved</span>':''}</span>
+        <span class="chev" aria-hidden="true">›</span></button>`}).join('');
+}
+
+function renderDetail(){
+  const el=$('detail'), i=S.items.find(x=>x.id===S.sel);
+  el.classList.toggle('open',!!i);
+  if(!i){el.innerHTML=`<div class="placeholder"><span class="plate big">###</span><p>Select a unit to see where it is now and every site it has been on.</p></div>`;return}
+  const h=hist(i), c=h[h.length-1]||{}, today=todayISO(), d=c.date?days(c.date,today):0;
+  const w=S.canWrite;
+  let conf='';
+  if(S.confirm&&S.confirm.type==='unit')conf=`<div class="confirm"><p>Delete ${esc(i.model)} (fleet ${esc(i.fleetNo)}) and its full history?</p><span style="display:flex;gap:6px"><button class="btn small" data-act="cancelc">Keep</button><button class="btn small danger" data-act="delunit">Delete unit</button></span></div>`;
+  el.innerHTML=`<div class="dwrap">
+    <div class="dtop">
+      <div class="dtitle"><span class="plate big">${esc(i.fleetNo)}</span><div style="min-width:0"><h2>${esc(i.model)}</h2><div class="meta">${esc(catOf(i.category).one)}</div></div></div>
+      <div style="display:flex;gap:4px;align-items:center">${w?`<button class="btn small" data-act="edit">Edit</button>`:''}<button class="btn small dclose" data-act="close" aria-label="Close">Close</button></div>
+    </div>
+    <dl class="specs" style="margin:0">
+      <div><dt>Model</dt><dd>${esc(i.model)}</dd></div>
+      <div><dt>Serial no.</dt><dd class="mono">${esc(i.serial)}</dd></div>
+      <div><dt>Fleet no.</dt><dd class="mono">${esc(i.fleetNo)}</dd></div>
+    </dl>
+    <div class="now">
+      <span class="lbl">Current location</span>
+      <span class="where">${esc(c.location)}</span>
+      <div class="row2"><span class="code">${esc(c.siteCode)}</span><span>Arrived ${fmt(c.date)}</span><span>${d>=0?plural(d,'day')+' on site':'Arrives in '+plural(-d,'day')}</span></div>
+    </div>
+    ${w?`<section class="sect"><h3>Shift to another site</h3>
+      <form class="form" id="moveForm" novalidate>
+        <div class="field"><label for="mvDate">Date of arrival</label><input id="mvDate" type="date" value="${today}" required></div>
+        <div class="field"><label for="mvCode">Site code</label><input id="mvCode" list="dlCodes" placeholder="e.g. S-101" autocomplete="off" required></div>
+        <div class="field full"><label for="mvLoc">Site location</label><input id="mvLoc" list="dlNames" placeholder="e.g. Site Alpha" autocomplete="off" required></div>
+        <div class="field full"><label for="mvNote">Notes (optional)</label><input id="mvNote" placeholder="Transport, reason for shift, receiving supervisor…"></div>
+        ${S.moveErr?`<p class="err full">${esc(S.moveErr)}</p>`:''}
+        <div class="formfoot full"><button class="btn primary" type="submit" ${S.busy?'disabled':''}>Record move</button></div>
+      </form></section>`:''}
+    <section class="sect"><h3>Location history · ${plural(h.length,'entry')}</h3>
+      <ol class="timeline">${h.slice().reverse().map((e,idx,arr)=>{
+        const isCur=idx===0, next=idx>0?arr[idx-1]:null;
+        const stay=next?days(e.date,next.date):days(e.date,today);
+        const cd=S.confirm&&S.confirm.type==='entry'&&S.confirm.id===e.id;
+        return `<li class="tl ${isCur?'cur':''}"><span class="dot"></span>
+          <div style="min-width:0"><div class="date">${fmt(e.date)}</div>
+            <div class="place">${idx===arr.length-1?'Arrived at':'Shifted to'} ${esc(e.location)} <span class="code">${esc(e.siteCode)}</span></div>
+            <div class="dur">${isCur?(stay>=0?`Current site · ${plural(stay,'day')} so far`:'Scheduled arrival'):`Stayed ${plural(stay,'day')} · left ${fmt(next.date)}`}</div>
+            ${e.notes?`<div class="note">${esc(e.notes)}</div>`:''}
+            ${cd?`<div class="confirm" style="margin-top:8px"><p>Remove this entry?</p><span style="display:flex;gap:6px"><button class="btn small" data-act="cancelc">Keep</button><button class="btn small danger" data-act="delentry" data-eid="${e.id}">Remove</button></span></div>`:''}
+          </div>
+          <div>${isCur?'<span class="chip current">Now</span>':''}${w&&h.length>1&&!cd?`<button class="btn link" data-act="askentry" data-eid="${e.id}" aria-label="Remove entry">Remove</button>`:''}</div></li>`}).join('')}</ol>
+    </section>
+    ${w?(conf||`<div style="display:flex;justify-content:flex-end"><button class="btn link" data-act="askunit" style="color:var(--danger)">Delete this unit</button></div>`):''}
+  </div>`;
+}
+
+/* ---------- actions ---------- */
+function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2800)}
+function handleWriteError(e){
+  const code=e&&e.code;
+  if(code==='invalid_argument'||code==='permission-denied'){S.canWrite=false;toast('You have view-only access to this register.');renderAll()}
+  else if(code==='quota_exceeded')toast('The register is full. Delete old units before adding new ones.');
+  else if(code==='resource_exhausted')toast('Too many changes at once. Wait a moment and try again.');
+  else toast('Could not save. Check your connection and try again.');
+}
+
+function openForm(mode){
+  const i=mode==='edit'?S.items.find(x=>x.id===S.sel):null;
+  const defCat=i?i.category:(S.cat!=='all'?S.cat:'rigs');
+  $('modalBody').innerHTML=`<h2>${i?'Edit equipment':'Add equipment'}</h2>
+  <form class="form" id="eqForm" novalidate>
+    <div class="field full"><label for="fCat">Category</label><select id="fCat">${CATS.map(c=>`<option value="${c.key}" ${c.key===defCat?'selected':''}>${esc(c.label)}</option>`).join('')}</select></div>
+    <div class="field full"><label for="fModel">Model</label><input id="fModel" value="${esc(i?.model)}" placeholder="e.g. DR-200" required></div>
+    <div class="field"><label for="fSerial">Serial number</label><input id="fSerial" value="${esc(i?.serial)}" placeholder="e.g. 1001" required></div>
+    <div class="field"><label for="fFleet">Fleet number</label><input id="fFleet" value="${esc(i?.fleetNo)}" placeholder="e.g. 01" required></div>
+    ${i?'':`<div class="field"><label for="fCode">Site code</label><input id="fCode" list="dlCodes" placeholder="e.g. S-102" autocomplete="off" required></div>
+    <div class="field"><label for="fDate">Date of arrival</label><input id="fDate" type="date" value="${todayISO()}" required></div>
+    <div class="field full"><label for="fLoc">Site location</label><input id="fLoc" list="dlNames" placeholder="e.g. Site Bravo" autocomplete="off" required></div>`}
+    <p class="err full" id="fErr" hidden></p>
+    <div class="formfoot full"><button type="button" class="btn" data-act="closem">Cancel</button><button type="submit" class="btn primary" id="fSave">${i?'Save changes':'Add equipment'}</button></div>
+  </form>`;
+  $('modal').hidden=false;
+  $('modal').dataset.mode=mode;
+  setTimeout(()=>$('fModel').focus(),30);
+}
+function closeModal(){$('modal').hidden=true;$('modalBody').innerHTML=''}
+
+async function saveForm(ev){
+  ev.preventDefault();
+  const mode=$('modal').dataset.mode, err=$('fErr'), v=id=>($(id)?.value||'').trim();
+  const data={category:v('fCat'),model:v('fModel'),serial:v('fSerial'),fleetNo:v('fFleet')};
+  const show=m=>{err.textContent=m;err.hidden=false};
+  if(!data.model||!data.serial||!data.fleetNo)return show('Fill in model, serial number and fleet number.');
+  const dup=S.items.find(x=>x.category===data.category&&String(x.fleetNo).toLowerCase()===data.fleetNo.toLowerCase()&&(mode!=='edit'||x.id!==S.sel));
+  if(dup)return show(`Fleet number ${data.fleetNo} is already used by ${dup.model} (SN ${dup.serial}) in ${catOf(data.category).label}.`);
+  let first=null;
+  if(mode!=='edit'){
+    first={id:uid(),date:v('fDate'),location:v('fLoc'),siteCode:v('fCode').toUpperCase(),notes:'',t:Date.now()};
+    if(!first.date||!first.location||!first.siteCode)return show('Fill in the site location, site code and date of arrival.');
+  }
+  if(S.busy)return;S.busy=true;$('fSave').disabled=true;
+  try{
+    if(mode==='edit'){await S.db.doc(COL+'/'+S.sel).update({...data,updatedAt:Date.now()});toast('Changes saved')}
+    else{const ref=await S.db.collection(COL).add({...data,history:[first],createdAt:Date.now(),updatedAt:Date.now()});S.sel=ref.id;S.cat=data.category;toast(`${data.model} added at ${first.location}`)}
+    closeModal();
+  }catch(e){handleWriteError(e);if($('fSave'))$('fSave').disabled=false}
+  finally{S.busy=false;renderAll()}
+}
+
+async function recordMove(ev){
+  ev.preventDefault();
+  const i=S.items.find(x=>x.id===S.sel);if(!i||S.busy)return;
+  const e={id:uid(),date:$('mvDate').value,siteCode:$('mvCode').value.trim().toUpperCase(),location:$('mvLoc').value.trim(),notes:$('mvNote').value.trim(),t:Date.now()};
+  const keep={date:e.date,code:$('mvCode').value,loc:e.location,note:e.notes};
+  const c=cur(i)||{};
+  const fail=m=>{S.moveErr=m;renderDetail();$('mvDate').value=keep.date;$('mvCode').value=keep.code;$('mvLoc').value=keep.loc;$('mvNote').value=keep.note};
+  if(!e.date||!e.siteCode||!e.location)return fail('Enter the date, site code and site location.');
+  if(c.siteCode&&c.siteCode.toUpperCase()===e.siteCode&&e.date>=c.date)return fail(`This unit is already at ${c.location} (${c.siteCode}).`);
+  S.busy=true;S.moveErr='';
+  try{await S.db.doc(COL+'/'+i.id).update({history:[...(i.history||[]),e],updatedAt:Date.now()});toast(`Fleet ${i.fleetNo} shifted to ${e.location}`)}
+  catch(err){handleWriteError(err)}
+  finally{S.busy=false;renderAll()}
+}
+
+async function delEntry(eid){
+  const i=S.items.find(x=>x.id===S.sel);if(!i)return;
+  S.confirm=null;
+  try{await S.db.doc(COL+'/'+i.id).update({history:(i.history||[]).filter(h=>h.id!==eid),updatedAt:Date.now()});toast('Entry removed')}
+  catch(e){handleWriteError(e)}
+  renderAll();
+}
+async function delUnit(){
+  const i=S.items.find(x=>x.id===S.sel);if(!i)return;
+  S.confirm=null;
+  try{await S.db.doc(COL+'/'+i.id).delete();S.sel=null;toast(`${i.model} (fleet ${i.fleetNo}) deleted`)}
+  catch(e){handleWriteError(e)}
+  renderAll();
+}
+
+function csvCell(v){v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+async function exportCSV(kind){
+  $('exportMenu').hidden=true;$('exportBtn').setAttribute('aria-expanded','false');
+  const list=visible(), today=todayISO(), rows=[];
+  if(kind==='current'){
+    rows.push(['Category','Fleet No','Model','Serial No','Current Location','Site Code','On Site Since','Days On Site']);
+    for(const i of list){const c=cur(i)||{};rows.push([catOf(i.category).label,i.fleetNo,i.model,i.serial,c.location,c.siteCode,c.date,c.date?days(c.date,today):''])}
+  }else{
+    rows.push(['Category','Fleet No','Model','Serial No','Date','Movement','Location','Site Code','Days There','Notes']);
+    for(const i of list){const h=hist(i);h.forEach((e,k)=>{const nx=h[k+1];rows.push([catOf(i.category).label,i.fleetNo,i.model,i.serial,e.date,k===0?'Arrived':'Shifted',e.location,e.siteCode,days(e.date,nx?nx.date:today),e.notes])})}
+  }
+  const scope=S.cat==='all'?'all':S.cat;
+  const csv='﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+  try{await S.dl.save({filename:`fleet-${kind==='current'?'locations':'history'}-${scope}-${today}.csv`,data:csv});toast('Export saved')}
+  catch(e){if(e&&e.code==='declined')return;if(e&&e.code==='rate_limited')return toast('A save prompt is already open.');toast('Export is not available here.')}
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('button');
+  if(!ev.target.closest('.top-actions'))$('exportMenu').hidden=true;
+  if(!t)return;
+  if(t.dataset.cat){S.cat=t.dataset.cat;renderAll();return}
+  if(t.dataset.id&&!t.dataset.act){S.sel=t.dataset.id;S.confirm=null;S.moveErr='';renderList();renderDetail();return}
+  const a=t.dataset.act;
+  if(a==='add')openForm('add');
+  else if(a==='edit')openForm('edit');
+  else if(a==='closem')closeModal();
+  else if(a==='close'){S.sel=null;renderList();renderDetail()}
+  else if(a==='askunit'){S.confirm={type:'unit'};renderDetail()}
+  else if(a==='askentry'){S.confirm={type:'entry',id:t.dataset.eid};renderDetail()}
+  else if(a==='cancelc'){S.confirm=null;renderDetail()}
+  else if(a==='delunit')delUnit();
+  else if(a==='delentry')delEntry(t.dataset.eid);
+});
+$('addBtn').onclick=()=>openForm('add');
+$('exportBtn').onclick=()=>{const m=$('exportMenu');m.hidden=!m.hidden;$('exportBtn').setAttribute('aria-expanded',String(!m.hidden))};
+$('expCurrent').onclick=()=>exportCSV('current');
+$('expHistory').onclick=()=>exportCSV('history');
+$('q').addEventListener('input',e=>{S.q=e.target.value;renderList()});
+$('sort').onchange=e=>{S.sort=e.target.value;renderList()};
+$('vList').onclick=()=>{S.view='list';renderAll()};
+$('vSites').onclick=()=>{S.view='sites';renderAll()};
+$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('modal').hidden)closeModal();else if(S.sel){S.sel=null;renderList();renderDetail()}}});
+document.addEventListener('submit',e=>{if(e.target.id==='eqForm')saveForm(e);else if(e.target.id==='moveForm')recordMove(e)});
+document.addEventListener('input',e=>{
+  // fill the site name when a known site code is typed
+  const pairs={fCode:'fLoc',mvCode:'mvLoc'};
+  if(pairs[e.target.id]){const n=knownSites().get(e.target.value.trim().toUpperCase());const loc=$(pairs[e.target.id]);if(n&&loc&&!loc.value)loc.value=n}
+});
+
+/* ---------- boot ---------- */
+renderAll();
+(function(){
+  S.dl={save:async({filename,data})=>{
+    const b=new Blob([data],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1500);return{status:'saved'}}};
+  if(!window.firebase||firebaseConfig.apiKey.indexOf('PASTE')===0){S.status='offline';renderAll();return}
+  try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig)}catch(e){S.status='error';S.errMsg=e.message;renderAll();return}
+  const db=firebase.firestore();S.db=db;
+  db.collection(COL).onSnapshot(snap=>{
+    S.items=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(S.sel&&!S.items.find(x=>x.id===S.sel))S.sel=null;
+    S.status='ready';
+    const f=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#moveForm');
+    renderHeader();renderCats();renderList();refreshDatalists();
+    if(!f)renderDetail();
+  },err=>{console.error(err);S.status='error';S.errMsg=err.code||err.message;renderAll()});
+})();
+</script>
+
+<div style="text-align:center;font:12px/1.5 system-ui,sans-serif;opacity:.6;padding:16px 16px 24px;">&copy; 2026 Marwan Shehata. All rights reserved. &middot; Demo version with fictional sample data.</div>
+</body>
+</html>
